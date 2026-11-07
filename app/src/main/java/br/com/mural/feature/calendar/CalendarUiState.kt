@@ -15,7 +15,8 @@ data class CalendarUiState(
     val todayCoverUri: String? = null,
     val todayPhotoCount: Int = 0,
     val minMonth: YearMonth = YearMonth.now().minusMonths(24),
-    val maxMonth: YearMonth = YearMonth.now()
+    val maxMonth: YearMonth = YearMonth.now(),
+    val cellAspectRatio: Float = 3f / 4f
 )
 
 @Immutable

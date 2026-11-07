@@ -47,6 +47,10 @@ class CalendarViewModel @Inject constructor(
         loadInitialData()
     }
 
+    fun setCellAspectRatio(ratio: Float) {
+        _uiState.update { it.copy(cellAspectRatio = ratio) }
+    }
+
     fun updatePermissionState() {
         val accessState = PhotoPermissionHelper.getPhotoAccessState(context)
         _uiState.update { it.copy(access = accessState) }

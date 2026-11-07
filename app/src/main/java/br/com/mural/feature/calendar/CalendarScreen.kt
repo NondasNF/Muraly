@@ -7,7 +7,6 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,25 +16,25 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
@@ -48,9 +47,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,8 +67,8 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 import java.util.Locale
+import kotlin.math.abs
 
 @Composable
 fun CalendarScreen(
@@ -115,13 +115,15 @@ fun CalendarScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp)
+                .navigationBarsPadding()
         ) {
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Month Header with Prev/Next Arrows
+            // Month Header with Prev/Next Arrows and Config 3-Dots Menu
             MonthHeader(
                 month = uiState.month,
                 canGoForward = uiState.month.isBefore(uiState.maxMonth),
+                currentAspectRatio = uiState.cellAspectRatio,
                 onPrevClick = {
                     val prev = uiState.month.minusMonths(1)
                     if (!prev.isBefore(uiState.minMonth)) {
@@ -133,10 +135,13 @@ fun CalendarScreen(
                     if (!next.isAfter(uiState.maxMonth)) {
                         viewModel.onMonthChanged(next)
                     }
+                },
+                onAspectRatioSelected = { ratio ->
+                    viewModel.setCellAspectRatio(ratio)
                 }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Weekday Headers (D S T Q Q S S)
             WeekdayHeaders()
@@ -182,6 +187,7 @@ fun CalendarScreen(
                     // Month Grid (7 columns x 6 rows)
                     MonthGrid(
                         cells = uiState.cells,
+                        aspectRatio = uiState.cellAspectRatio,
                         onCellClick = { cell ->
                             if (cell.date != LocalDate.MIN) {
                                 onDayClick(DateUtils.toDateKey(cell.date))
@@ -210,12 +216,15 @@ fun CalendarScreen(
 fun MonthHeader(
     month: YearMonth,
     canGoForward: Boolean,
+    currentAspectRatio: Float,
     onPrevClick: () -> Unit,
-    onNextClick: () -> Unit
+    onNextClick: () -> Unit,
+    onAspectRatioSelected: (Float) -> Unit
 ) {
     val monthName = month.format(DateTimeFormatter.ofPattern("MMMM", Locale("pt", "BR")))
         .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale("pt", "BR")) else it.toString() }
     val yearText = month.year.toString()
+    var showMenu by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -240,7 +249,10 @@ fun MonthHeader(
             )
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Surface(
                 modifier = Modifier
                     .size(36.dp)
@@ -274,6 +286,68 @@ fun MonthHeader(
                     )
                 }
             }
+
+            // 3-Dots Config Button & Aspect Ratio Modal Menu
+            Box {
+                Surface(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = { showMenu = true }),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Configuração do formato das células",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    Text(
+                        text = "Formato dos blocos",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+
+                    listOf(
+                        "1:1 Quadrado" to 1.0f,
+                        "3:4 Retrato" to (3f / 4f),
+                        "2:3 Retrato alto" to (2f / 3f)
+                    ).forEach { (label, ratio) ->
+                        val isSelected = abs(currentAspectRatio - ratio) < 0.01f
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = label,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            onClick = {
+                                onAspectRatioSelected(ratio)
+                                showMenu = false
+                            },
+                            trailingIcon = if (isSelected) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = "Selecionado",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            } else null
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -302,6 +376,7 @@ fun WeekdayHeaders() {
 @Composable
 fun MonthGrid(
     cells: List<DayCellUi>,
+    aspectRatio: Float,
     onCellClick: (DayCellUi) -> Unit
 ) {
     // 6 rows x 7 columns
@@ -319,6 +394,7 @@ fun MonthGrid(
                         val cellUi = cells[index]
                         DayCell(
                             cellUi = cellUi,
+                            aspectRatio = aspectRatio,
                             onClick = { onCellClick(cellUi) },
                             modifier = Modifier.weight(1f)
                         )

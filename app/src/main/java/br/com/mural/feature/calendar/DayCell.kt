@@ -19,7 +19,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
@@ -41,13 +40,14 @@ import java.util.Locale
 fun DayCell(
     cellUi: DayCellUi,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    aspectRatio: Float = 3f / 4f
 ) {
     if (cellUi.date == LocalDate.MIN) {
         // Ghost padding cell for 6-row alignment
         Box(
             modifier = modifier
-                .aspectRatio(1f)
+                .aspectRatio(aspectRatio)
                 .clip(RoundedCornerShape(10.dp))
                 .background(MuralTheme.extraColors.emptyCell.copy(alpha = 0.3f))
         )
@@ -71,7 +71,7 @@ fun DayCell(
 
     Box(
         modifier = modifier
-            .aspectRatio(1f)
+            .aspectRatio(aspectRatio)
             .clip(RoundedCornerShape(10.dp))
             .background(backgroundColor)
             .clickable(role = Role.Button, onClick = onClick)
@@ -81,7 +81,7 @@ fun DayCell(
             }
     ) {
         if (cellUi.coverUri != null && cellUi.isCoverAvailable) {
-            // Cover Photo
+            // Cover Photo (No dark scrim overlay as requested)
             AsyncImage(
                 model = cellUi.coverUri,
                 contentDescription = null,
@@ -89,31 +89,16 @@ fun DayCell(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Scrim gradient for contrast
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.70f)
-                            ),
-                            startY = 0f
-                        )
-                    )
-            )
-
-            // White day number with shadow
+            // Day number with text shadow for readability
             Text(
                 text = dayNumber,
                 style = TextStyle(
                     color = Color.White,
                     fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     shadow = Shadow(
-                        color = Color.Black.copy(alpha = 0.6f),
-                        blurRadius = 4f
+                        color = Color.Black,
+                        blurRadius = 6f
                     )
                 ),
                 modifier = Modifier
