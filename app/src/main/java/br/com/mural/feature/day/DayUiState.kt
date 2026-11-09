@@ -18,6 +18,9 @@ data class DayUiState(
     val filter: PhotoFilter = PhotoFilter.SELECTED_DAY,
     val currentCover: DayCoverEntity? = null,
     val selectedMediaId: Long? = null,
+    val noteText: String = "",
+    val isPhotoPickerOpen: Boolean = false,
+    val isFullScreenViewerOpen: Boolean = false,
     val isLoading: Boolean = true,
     val isCoverAvailable: Boolean = true
 )

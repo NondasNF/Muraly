@@ -127,7 +127,7 @@ class CalendarViewModel @Inject constructor(
         val today = LocalDate.now()
 
         // Validate cover media IDs
-        val coverMediaIds = coversMap.values.map { it.mediaId }.toSet()
+        val coverMediaIds = coversMap.values.mapNotNull { it.mediaId }.toSet()
         val validMediaIds = photoRepository.validateMediaIds(coverMediaIds)
 
         val cellUis = rawCells.map { date ->
@@ -147,7 +147,7 @@ class CalendarViewModel @Inject constructor(
                 val photoCount = summaries[date]?.count ?: 0
                 val isToday = (date == today)
                 val isFuture = date.isAfter(today)
-                val isAvailable = cover == null || validMediaIds.contains(cover.mediaId)
+                val isAvailable = cover == null || cover.mediaId == null || validMediaIds.contains(cover.mediaId)
 
                 DayCellUi(
                     date = date,

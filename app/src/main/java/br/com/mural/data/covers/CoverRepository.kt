@@ -34,6 +34,19 @@ class CoverRepository @Inject constructor(
         return dao.findByDate(dateKey)
     }
 
+    suspend fun saveJournalNote(dateKey: String, noteText: String) {
+        val existing = dao.findByDate(dateKey)
+        val entity = DayCoverEntity(
+            dateKey = dateKey,
+            mediaId = existing?.mediaId,
+            contentUri = existing?.contentUri,
+            takenAtMillis = existing?.takenAtMillis,
+            noteText = noteText,
+            updatedAtMillis = System.currentTimeMillis()
+        )
+        dao.upsert(entity)
+    }
+
     suspend fun setCover(
         dateKey: String,
         mediaId: Long,
@@ -52,6 +65,7 @@ class CoverRepository @Inject constructor(
             mediaId = mediaId,
             contentUri = contentUri,
             takenAtMillis = takenAtMillis,
+            noteText = previousCover?.noteText ?: "",
             updatedAtMillis = System.currentTimeMillis()
         )
         dao.upsert(newCover)
@@ -61,7 +75,19 @@ class CoverRepository @Inject constructor(
         val previousCover = dao.findByDate(dateKey)
         if (previousCover != null) {
             lastUndoAction = UndoAction.RestoreCover(previousCover)
-            dao.delete(dateKey)
+            if (previousCover.noteText.isNotBlank()) {
+                val entityWithoutCover = DayCoverEntity(
+                    dateKey = dateKey,
+                    mediaId = null,
+                    contentUri = null,
+                    takenAtMillis = null,
+                    noteText = previousCover.noteText,
+                    updatedAtMillis = System.currentTimeMillis()
+                )
+                dao.upsert(entityWithoutCover)
+            } else {
+                dao.delete(dateKey)
+            }
         }
     }
 

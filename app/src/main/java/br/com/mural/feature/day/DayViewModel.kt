@@ -53,17 +53,21 @@ class DayViewModel @Inject constructor(
                 photoRepository.getAllPhotos()
             }
 
+            val savedRecord = coverRepository.getCoverForDate(dateKey)
+            val initialNoteText = savedRecord?.noteText ?: ""
+
             _uiState.update {
                 it.copy(
                     date = date,
-                    photos = photos
+                    photos = photos,
+                    noteText = initialNoteText
                 )
             }
 
             coverRepository.coversFlow.collectLatest { coversMap ->
                 val currentCover = coversMap[dateKey]
                 val selectedMediaId = currentCover?.mediaId ?: photos.firstOrNull()?.mediaId
-                val isCoverAvailable = if (currentCover != null) {
+                val isCoverAvailable = if (currentCover != null && currentCover.mediaId != null) {
                     val valid = photoRepository.validateMediaIds(setOf(currentCover.mediaId))
                     valid.contains(currentCover.mediaId)
                 } else {
@@ -74,11 +78,19 @@ class DayViewModel @Inject constructor(
                     it.copy(
                         currentCover = currentCover,
                         selectedMediaId = _uiState.value.selectedMediaId ?: selectedMediaId,
+                        noteText = currentCover?.noteText ?: _uiState.value.noteText,
                         isCoverAvailable = isCoverAvailable,
                         isLoading = false
                     )
                 }
             }
+        }
+    }
+
+    fun onNoteTextChanged(newText: String) {
+        _uiState.update { it.copy(noteText = newText) }
+        viewModelScope.launch {
+            coverRepository.saveJournalNote(dateKey, newText)
         }
     }
 
@@ -106,6 +118,22 @@ class DayViewModel @Inject constructor(
         _uiState.update { it.copy(selectedMediaId = mediaId) }
     }
 
+    fun openPhotoPicker() {
+        _uiState.update { it.copy(isPhotoPickerOpen = true) }
+    }
+
+    fun closePhotoPicker() {
+        _uiState.update { it.copy(isPhotoPickerOpen = false) }
+    }
+
+    fun openFullScreenViewer() {
+        _uiState.update { it.copy(isFullScreenViewerOpen = true) }
+    }
+
+    fun closeFullScreenViewer() {
+        _uiState.update { it.copy(isFullScreenViewerOpen = false) }
+    }
+
     fun setCover() {
         val selectedId = _uiState.value.selectedMediaId ?: return
         val photo = _uiState.value.photos.find { it.mediaId == selectedId } ?: return
@@ -117,14 +145,14 @@ class DayViewModel @Inject constructor(
                 contentUri = photo.contentUri,
                 takenAtMillis = photo.takenAtMillis
             )
-            _eventFlow.emit(DayUiEvent.NavigateBackWithSuccess)
+            _uiState.update { it.copy(isPhotoPickerOpen = false) }
         }
     }
 
     fun removeCover() {
         viewModelScope.launch {
             coverRepository.removeCover(dateKey)
-            _eventFlow.emit(DayUiEvent.NavigateBackWithSuccess)
+            _uiState.update { it.copy(isPhotoPickerOpen = false) }
         }
     }
 }
