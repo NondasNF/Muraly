@@ -29,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.MoreVert
@@ -91,6 +90,7 @@ fun DayScreen(
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val ptBrLocale = Locale.forLanguageTag("pt-BR")
 
     LaunchedEffect(Unit) {
         viewModel.eventFlow.collectLatest { event ->
@@ -101,8 +101,8 @@ fun DayScreen(
         }
     }
 
-    val formattedTitle = uiState.date.format(DateTimeFormatter.ofPattern("d 'de' MMMM", Locale("pt", "BR")))
-    val dayOfWeekText = uiState.date.format(DateTimeFormatter.ofPattern("EEEE", Locale("pt", "BR")))
+    val formattedTitle = uiState.date.format(DateTimeFormatter.ofPattern("d 'de' MMMM", ptBrLocale))
+    val dayOfWeekText = uiState.date.format(DateTimeFormatter.ofPattern("EEEE", ptBrLocale))
 
     // Full-Screen Image Zoom Viewer Modal
     if (uiState.isFullScreenViewerOpen && uiState.currentCover?.contentUri != null) {
